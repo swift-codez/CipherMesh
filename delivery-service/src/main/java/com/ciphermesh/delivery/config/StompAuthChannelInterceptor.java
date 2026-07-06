@@ -1,5 +1,7 @@
 package com.ciphermesh.delivery.config;
 
+import com.ciphermesh.delivery.security.JwtService;
+import com.ciphermesh.delivery.security.JwtService.AuthenticatedUser;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -8,33 +10,39 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.stereotype.Component;
 
 /**
- * Reads identity from the STOMP CONNECT frame and attaches it to the session.
- * The {@code userId} becomes the session {@link java.security.Principal} and
- * both {@code userId} and {@code deviceId} are stored as session attributes so
- * the connect/disconnect listener can register and deregister sessions.
- *
- * <p>This is an interim stand-in for token-based authentication, which replaces
- * the trusted headers with a verified JWT in a later step.
+ * Authenticates the STOMP CONNECT frame with the bearer JWT issued by the
+ * identity service. The verified subject becomes the session
+ * {@link java.security.Principal}, and the user/device are stored as session
+ * attributes for the connect/disconnect listener. Identity therefore comes from
+ * a signed token, never from client-supplied plain headers.
  */
 @Component
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
     public static final String USER_ID = "userId";
     public static final String DEVICE_ID = "deviceId";
+    private static final String AUTHORIZATION = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
+
+    private final JwtService jwtService;
+
+    public StompAuthChannelInterceptor(JwtService jwtService) {
+        this.jwtService = jwtService;
+    }
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
-            String userId = accessor.getFirstNativeHeader(USER_ID);
-            String deviceId = accessor.getFirstNativeHeader(DEVICE_ID);
-            if (userId == null || deviceId == null) {
-                throw new IllegalArgumentException("CONNECT requires userId and deviceId headers");
+            String authorization = accessor.getFirstNativeHeader(AUTHORIZATION);
+            if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+                throw new IllegalArgumentException("CONNECT requires a bearer token");
             }
-            accessor.setUser(new StompPrincipal(userId));
+            AuthenticatedUser user = jwtService.verify(authorization.substring(BEARER_PREFIX.length()));
+            accessor.setUser(new StompPrincipal(user.userId()));
             if (accessor.getSessionAttributes() != null) {
-                accessor.getSessionAttributes().put(USER_ID, userId);
-                accessor.getSessionAttributes().put(DEVICE_ID, Integer.parseInt(deviceId));
+                accessor.getSessionAttributes().put(USER_ID, user.userId());
+                accessor.getSessionAttributes().put(DEVICE_ID, user.deviceId());
             }
         }
         return message;

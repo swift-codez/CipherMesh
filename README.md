@@ -78,8 +78,18 @@ mvn clean verify
 > The repository test suite uses Testcontainers, so a running Docker daemon is
 > required for `verify`.
 
+## Documentation
+
+- [Architecture & sequence diagrams](docs/architecture.md)
+- [Threat model](docs/threat-model.md)
+- Architecture decisions: [ADR 0001](docs/adr/0001-synchronous-prekey-bundle-fetch.md),
+  [ADR 0002](docs/adr/0002-zero-knowledge-relay.md)
+- Per-service: [identity-service](identity-service/README.md),
+  [delivery-service](delivery-service/README.md), [web-client](web-client/README.md)
+
 ## Status
 
-Early development. The backend is being built incrementally; `identity-service`
-domain and persistence are in place, with registration, bundle assembly, and
-the delivery service to follow.
+Feature-complete reference implementation (v1.0.0): both backend services, the
+shared event contracts, and the web client are in place with unit and
+Testcontainers-backed integration tests and a CI pipeline. See the
+[CHANGELOG](CHANGELOG.md).
