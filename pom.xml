@@ -30,6 +30,9 @@
         <!-- Override Spring Boot's managed version: newer docker-java negotiates
              the Docker Engine API version, required for Docker Engine 25+ (API >= 1.40). -->
         <testcontainers.version>1.21.4</testcontainers.version>
+        <!-- Override Spring Boot's managed version so Mockito's instrumentation
+             supports newer JDK bytecode (JDK 24+). -->
+        <byte-buddy.version>1.18.10</byte-buddy.version>
     </properties>
 
     <dependencyManagement>

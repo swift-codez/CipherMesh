@@ -1,7 +1,9 @@
 package com.ciphermesh.identity;
 
+import com.ciphermesh.identity.messaging.IdentityEventPublisher;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
@@ -24,4 +26,12 @@ public abstract class AbstractIntegrationTest {
     static {
         POSTGRES.start();
     }
+
+    /**
+     * Integration tests exercise persistence and HTTP, not the message broker,
+     * so the Kafka publisher is mocked. This keeps the identity ITs independent
+     * of a running broker and avoids the producer's metadata-fetch block.
+     */
+    @MockitoBean
+    protected IdentityEventPublisher identityEventPublisher;
 }

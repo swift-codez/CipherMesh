@@ -4,15 +4,18 @@ import com.ciphermesh.identity.api.OneTimePreKeyRequest;
 import com.ciphermesh.identity.api.RegisterKeysRequest;
 import com.ciphermesh.identity.api.RegisterKeysResponse;
 import com.ciphermesh.identity.api.SignedPreKeyRequest;
+import com.ciphermesh.events.UserRegisteredEvent;
 import com.ciphermesh.identity.domain.Device;
 import com.ciphermesh.identity.domain.OneTimePreKey;
 import com.ciphermesh.identity.domain.SignedPreKey;
+import com.ciphermesh.identity.messaging.IdentityEventPublisher;
 import com.ciphermesh.identity.repository.DeviceRepository;
 import com.ciphermesh.identity.repository.OneTimePreKeyRepository;
 import com.ciphermesh.identity.repository.SignedPreKeyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 
@@ -27,13 +30,16 @@ public class KeyRegistrationService {
     private final DeviceRepository deviceRepository;
     private final SignedPreKeyRepository signedPreKeyRepository;
     private final OneTimePreKeyRepository oneTimePreKeyRepository;
+    private final IdentityEventPublisher eventPublisher;
 
     public KeyRegistrationService(DeviceRepository deviceRepository,
                                   SignedPreKeyRepository signedPreKeyRepository,
-                                  OneTimePreKeyRepository oneTimePreKeyRepository) {
+                                  OneTimePreKeyRepository oneTimePreKeyRepository,
+                                  IdentityEventPublisher eventPublisher) {
         this.deviceRepository = deviceRepository;
         this.signedPreKeyRepository = signedPreKeyRepository;
         this.oneTimePreKeyRepository = oneTimePreKeyRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -60,6 +66,9 @@ public class KeyRegistrationService {
                 .map(otpk -> toEntity(device, otpk))
                 .toList();
         oneTimePreKeyRepository.saveAll(oneTimePreKeys);
+
+        eventPublisher.publishUserRegistered(new UserRegisteredEvent(
+                device.getUserId(), device.getDeviceId(), device.getRegistrationId(), Instant.now()));
 
         return new RegisterKeysResponse(device.getId(), oneTimePreKeys.size());
     }
